@@ -65,6 +65,8 @@ class BrushConfig:
         self.seed_inactivetime = self.__parse_number(config.get("seed_inactivetime"))
         self.seed_inactivetime_ratio_time = self.__parse_number(config.get("seed_inactivetime_ratio_time"))
         self.seed_inactivetime_ratio_ratio = self.__parse_number(config.get("seed_inactivetime_ratio_ratio"))
+        self.download_time_size_time = self.__parse_number(config.get("download_time_size_time"))
+        self.download_time_size_ratio = self.__parse_number(config.get("download_time_size_ratio"))
         self.delete_size_range = config.get("delete_size_range")
         self.up_speed = self.__parse_number(config.get("up_speed"))
         self.dl_speed = self.__parse_number(config.get("dl_speed"))
@@ -123,6 +125,8 @@ class BrushConfig:
             "seed_inactivetime",
             "seed_inactivetime_ratio_time",
             "seed_inactivetime_ratio_ratio",
+            "download_time_size_time",
+            "download_time_size_ratio",
             "save_path",
             "proxy_delete",
             "qb_category",
@@ -267,7 +271,7 @@ class BrushFlowJlike(_PluginBase):
     # 插件图标
     plugin_icon = "brush.jpg"
     # 插件版本
-    plugin_version = "4.3.4"
+    plugin_version = "4.3.4-2"
     # 插件作者
     plugin_author = "jxxghp,InfinityPacer,Seed680,jlikeme"
     # 作者主页
@@ -1534,6 +1538,40 @@ class BrushFlowJlike(_PluginBase):
                                                     {
                                                         'component': 'VTextField',
                                                         'props': {
+                                                            'model': 'download_time_size_time',
+                                                            'label': '下载时间完成度-下载时间（分钟）',
+                                                            'placeholder': '超过下载时间且完成度低于时删除任务'
+                                                        }
+                                                    }
+                                                ]
+                                            },
+                                            {
+                                                'component': 'VCol',
+                                                'props': {
+                                                    "cols": 12,
+                                                    "md": 4
+                                                },
+                                                'content': [
+                                                    {
+                                                        'component': 'VTextField',
+                                                        'props': {
+                                                            'model': 'download_time_size_ratio',
+                                                            'label': '下载时间完成度-完成度',
+                                                            'placeholder': '超过下载时间且完成度低于时删除任务'
+                                                        }
+                                                    }
+                                                ]
+                                            },
+                                            {
+                                                'component': 'VCol',
+                                                'props': {
+                                                    "cols": 12,
+                                                    "md": 4
+                                                },
+                                                'content': [
+                                                    {
+                                                        'component': 'VTextField',
+                                                        'props': {
                                                             'model': 'delete_except_tags',
                                                             'label': '删除排除标签',
                                                             'placeholder': '如：MOVIEPILOT,H&R'
@@ -2631,6 +2669,9 @@ class BrushFlowJlike(_PluginBase):
         elif brush_config.seed_inactivetime_ratio_time and brush_config.seed_inactivetime_ratio_ratio and torrent_info.get("iatime") >= float(
                 brush_config.seed_inactivetime_ratio_time) * 60 and torrent_info.get("ratio") < float(brush_config.seed_inactivetime_ratio_ratio):
             reason = f"未活动时间 {torrent_info.get('iatime') / 60:.0f} 分钟，大于 {brush_config.seed_inactivetime} 分钟，分享率 {torrent_info.get('ratio'):.2f}，低于 {brush_config.seed_inactivetime_ratio_ratio}"
+        elif (brush_config.download_time_size_time and brush_config.download_time_size_ratio and torrent_info.get("dltime") >= float(brush_config.download_time) * 60 and
+              torrent_info.get("downloaded") / torrent_info.get("total_size") < float(brush_config.download_time_size_ratio)):
+            reason = f"下载耗时 {torrent_info.get('dltime') / 60:.1f} 分钟，大于 {brush_config.download_time_size_time} 分钟，下载完成度 {torrent_info.get('downloaded') / torrent_info.get('total_size'):.2%}，低于 {brush_config.download_time_size_ratio:.2%}"
         else:
             return False, reason
 
@@ -3031,6 +3072,8 @@ class BrushFlowJlike(_PluginBase):
             "seed_inactivetime": "未活动时间",
             "seed_inactivetime_ratio_time": "分享率未活动-时间",
             "seed_inactivetime_ratio_ratio": "分享率未活动-分享率",
+            "download_time_size_time": "下载时间完成度-时间",
+            "download_time_size_ratio": "下载时间完成度-完成度",
             "up_speed": "单任务上传限速",
             "dl_speed": "单任务下载限速",
             "auto_archive_days": "自动清理记录天数"
@@ -3105,6 +3148,8 @@ class BrushFlowJlike(_PluginBase):
             "seed_inactivetime": brush_config.seed_inactivetime,
             "seed_inactivetime_ratio_time": brush_config.seed_inactivetime_ratio_time,
             "seed_inactivetime_ratio_ratio": brush_config.seed_inactivetime_ratio_ratio,
+            "download_time_size_time": brush_config.download_time_size_time,
+            "download_time_size_ratio": brush_config.download_time_size_ratio,
             "delete_size_range": brush_config.delete_size_range,
             "up_speed": brush_config.up_speed,
             "dl_speed": brush_config.dl_speed,
