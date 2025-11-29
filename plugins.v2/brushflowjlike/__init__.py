@@ -271,7 +271,7 @@ class BrushFlowJlike(_PluginBase):
     # 插件图标
     plugin_icon = "brush.jpg"
     # 插件版本
-    plugin_version = "4.3.4-3"
+    plugin_version = "4.3.4-4"
     # 插件作者
     plugin_author = "jxxghp,InfinityPacer,Seed680,jlikeme"
     # 作者主页
@@ -2100,12 +2100,20 @@ class BrushFlowJlike(_PluginBase):
 
         logger.info(f"开始获取站点 {siteinfo.name} 的新种子 ...")
 
-        # 根据rss_support配置决定使用browse还是rss方法获取种子
+        # 根据rss_support配置决定是否使用rss方法获取种子
+        torrents = None
         brush_config = self.__get_brush_config(sitename=siteinfo.name)
         if brush_config.rss_support:
             torrents = TorrentsChain().rss(domain=siteinfo.domain)
-        else:
-            torrents = TorrentsChain().browse(domain=siteinfo.domain)
+
+        # 使用browse方法获取种子
+        torrents_temp = TorrentsChain().browse(domain=siteinfo.domain)
+        if torrents_temp:
+            # torrents_temp添加到torrents中
+            if torrents:
+                torrents.extend(torrents_temp)
+            else:
+                torrents = torrents_temp
 
         if not torrents:
             logger.info(f"站点 {siteinfo.name} 没有获取到种子")
