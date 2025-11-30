@@ -48,6 +48,7 @@
     "author": "jxxghp,InfinityPacer,Seed680,jlikeme",
     "level": 2,
     "history": {
+      "v4.3.4-6": "日志输出促销过期时间",
       "v4.3.4-5": "馒头的官种不参与未活动时间的删除规则",
       "v4.3.4-4": "支持RSS的同时通过Browser方式刷流",
       "v4.3.4-3": "解决删除规则的bug",
