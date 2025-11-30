@@ -271,7 +271,7 @@ class BrushFlowJlike(_PluginBase):
     # 插件图标
     plugin_icon = "brush.jpg"
     # 插件版本
-    plugin_version = "4.3.4-5"
+    plugin_version = "4.3.4-6"
     # 插件作者
     plugin_author = "jxxghp,InfinityPacer,Seed680,jlikeme"
     # 作者主页
@@ -3651,6 +3651,7 @@ class BrushFlowJlike(_PluginBase):
             "pubdate": "发布时间",
             "seeders": "做种数",
             "volume_factor": "促销",
+            "freedate_diff": "促销过期时间",
             "hit_and_run": "Hit&Run"
         }
         for key in label_mapping:
