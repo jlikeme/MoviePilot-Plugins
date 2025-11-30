@@ -271,7 +271,7 @@ class BrushFlowJlike(_PluginBase):
     # 插件图标
     plugin_icon = "brush.jpg"
     # 插件版本
-    plugin_version = "4.3.4-4"
+    plugin_version = "4.3.4-5"
     # 插件作者
     plugin_author = "jxxghp,InfinityPacer,Seed680,jlikeme"
     # 作者主页
@@ -2672,14 +2672,18 @@ class BrushFlowJlike(_PluginBase):
                 brush_config.seed_avgspeed) * 1024 and torrent_info.get("seeding_time") >= 30 * 60:
             reason = f"平均上传速度 {torrent_info.get('avg_upspeed') / 1024:.1f} KB/s，低于 {brush_config.seed_avgspeed} KB/s"
         elif brush_config.seed_inactivetime and torrent_info.get("iatime") >= float(
-                brush_config.seed_inactivetime) * 60:
+                brush_config.seed_inactivetime) * 60 and \
+                (not (site_name.lower() == "馒头" and re.search(r"\b(MWeb|MTeam|TPTV)\b", torrent_task.get("title", ""), re.I))):
+            # 馒头站点的官种（MWeb,MTeam,TPTV）不受此条件影响
             reason = f"未活动时间 {torrent_info.get('iatime') / 60:.0f} 分钟，大于 {brush_config.seed_inactivetime} 分钟"
         elif brush_config.seed_inactivetime_ratio_time and brush_config.seed_inactivetime_ratio_ratio and torrent_info.get("iatime") >= float(
-                brush_config.seed_inactivetime_ratio_time) * 60 and torrent_info.get("ratio") < float(brush_config.seed_inactivetime_ratio_ratio):
+                brush_config.seed_inactivetime_ratio_time) * 60 and torrent_info.get("ratio") < float(brush_config.seed_inactivetime_ratio_ratio) and \
+                (not (site_name.lower() == "馒头" and re.search(r"\b(MWeb|MTeam|TPTV)\b", torrent_task.get("title", ""), re.I))):
+            # 馒头站点的官种（MWeb,MTeam,TPTV）不受此条件影响
             reason = f"未活动时间 {torrent_info.get('iatime') / 60:.0f} 分钟，大于 {brush_config.seed_inactivetime_ratio_time} 分钟，分享率 {torrent_info.get('ratio'):.2f}，低于 {brush_config.seed_inactivetime_ratio_ratio}"
         elif (brush_config.download_time_size_time and brush_config.download_time_size_ratio and torrent_info.get("dltime") >= float(brush_config.download_time_size_time) * 60 and
               torrent_info.get("downloaded") / torrent_info.get("total_size") < float(brush_config.download_time_size_ratio)):
-            reason = f"下载耗时 {torrent_info.get('dltime') / 60:.1f} 分钟，大于 {brush_config.download_time_size_time} 分钟，下载完成度 {torrent_info.get('downloaded') / torrent_info.get('total_size'):.2%}，低于 {brush_config.download_time_size_ratio:.2%}"
+            reason = f"下载耗时 {torrent_info.get('dltime') / 60:.1f} 分钟，大于 {brush_config.download_time_size_time} 分钟，下载完成度 {torrent_info.get('downloaded') / torrent_info.get('total_size'):.2}，低于 {brush_config.download_time_size_ratio:.2}"
         else:
             return False, reason
 
