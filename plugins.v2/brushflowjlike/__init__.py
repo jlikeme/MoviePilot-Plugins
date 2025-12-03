@@ -271,7 +271,7 @@ class BrushFlowJlike(_PluginBase):
     # 插件图标
     plugin_icon = "brush.jpg"
     # 插件版本
-    plugin_version = "4.3.4-8"
+    plugin_version = "4.3.4-9"
     # 插件作者
     plugin_author = "jxxghp,InfinityPacer,Seed680,jlikeme"
     # 作者主页
@@ -2776,9 +2776,9 @@ class BrushFlowJlike(_PluginBase):
             if uploaded_success and recent_uploaded < float(brush_config.upload_time_size_size) * 1024 * 1024:
                 uploaded10_success, recent10_uploaded = self.__calculate_recent_time_uploaded(
                     torrent_task=torrent_task, torrent_info=torrent_info,
-                    recent_seconds=600)  # 10分钟内上传量
-                if not (uploaded10_success and recent10_uploaded > 5 * 1024 * 1024):
-                    # 10分钟内上传量不大于5MB，认为是真正的上传停滞
+                    recent_seconds=630)  # 10分钟内上传量，每5分钟check一次，因此取630秒
+                if not (uploaded10_success and recent10_uploaded > 2 * 1024 * 1024):
+                    # 10分钟内上传量不大于2MB，认为是真正的上传停滞
                     deletion_reason = (f"最近 {brush_config.upload_time_size_time} 分钟内，上传量 {recent_uploaded/(1024*1024):.2f} MB，低于 {brush_config.upload_time_size_size} MB")
 
         if (not deletion_reason and brush_config.download_time_size_time
@@ -2790,8 +2790,8 @@ class BrushFlowJlike(_PluginBase):
             if downloaded_success and recent_downloaded < float(brush_config.download_time_size_size) * 1024 * 1024:
                 downloaded10_success, recent10_downloaded = self.__calculate_recent_time_downloaded(
                     torrent_task=torrent_task, torrent_info=torrent_info,
-                    recent_seconds=600)  # 10分钟内下载量
-                if not (downloaded10_success and recent10_downloaded > 10 * 1024 * 1024):
+                    recent_seconds=630)  # 10分钟内下载量，每5分钟check一次，因此取630秒
+                if not (downloaded10_success and recent10_downloaded > 8 * 1024 * 1024):
                     # 10分钟内下载量不大于10MB，认为是真正的下载停滞
                     deletion_reason = (f"最近 {brush_config.download_time_size_time} 分钟内，"
                                        f"下载量 {recent_downloaded / (1024 * 1024):.2f} MB，"
