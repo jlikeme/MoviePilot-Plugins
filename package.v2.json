@@ -43,11 +43,12 @@
     "name": "站点刷流Jlike",
     "description": "自动托管刷流，将会提高对应站点的访问频率。",
     "labels": "刷流,仪表板",
-    "version": "4.3.4-9",
+    "version": "4.3.4-10",
     "icon": "brush.jpg",
     "author": "jxxghp,InfinityPacer,Seed680,jlikeme",
     "level": 2,
     "history": {
+      "v4.3.4-10": "优化删除规则",
       "v4.3.4-9": "优化删除规则",
       "v4.3.4-8": "优化删除规则",
       "v4.3.4-7": "取消馒头官种的特殊规则",

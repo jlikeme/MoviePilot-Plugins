@@ -271,7 +271,7 @@ class BrushFlowJlike(_PluginBase):
     # 插件图标
     plugin_icon = "brush.jpg"
     # 插件版本
-    plugin_version = "4.3.4-9"
+    plugin_version = "4.3.4-10"
     # 插件作者
     plugin_author = "jxxghp,InfinityPacer,Seed680,jlikeme"
     # 作者主页
@@ -2769,7 +2769,7 @@ class BrushFlowJlike(_PluginBase):
             deletion_reason = f"未活动时间 {torrent_info.get('iatime') / 60:.0f} 分钟，大于 {brush_config.seed_inactivetime} 分钟"
 
         if (not deletion_reason and brush_config.upload_time_size_time and brush_config.upload_time_size_size
-                and torrent_info.get("downloaded") >= torrent_info.get("total_size", 0)):
+                and torrent_info.get("downloaded") >= torrent_info.get("total_size", 0) and torrent_info.get("seeding_time") > float(brush_config.upload_time_size_time) * 60):
             # 当下载已完成时，计算指定时间窗口内的上传量，低于设定值则删除
             uploaded_success, recent_uploaded = self.__calculate_recent_time_uploaded(
                 torrent_task=torrent_task, torrent_info=torrent_info, recent_seconds=float(brush_config.upload_time_size_time or 0) * 60)
