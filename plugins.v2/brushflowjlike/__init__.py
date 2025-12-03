@@ -84,6 +84,7 @@ class BrushConfig:
         self.site_hr_active = config.get("site_hr_active", False)
         self.site_skip_tips = config.get("site_skip_tips", False)
         self.rss_support = config.get("rss_support", False)
+        self.mode_support = config.get("mode_support")
 
         self.brush_tag = "刷流"
         # 站点独立配置
@@ -133,6 +134,7 @@ class BrushConfig:
             "site_hr_active",
             "site_skip_tips",
             "del_no_free",
+            "mode_support",
             "rss_support"
             # 当新增支持字段时，仅在此处添加字段名
         }
@@ -271,7 +273,7 @@ class BrushFlowJlike(_PluginBase):
     # 插件图标
     plugin_icon = "brush.jpg"
     # 插件版本
-    plugin_version = "4.3.4-10"
+    plugin_version = "4.3.4-11"
     # 插件作者
     plugin_author = "jxxghp,InfinityPacer,Seed680,jlikeme"
     # 作者主页
@@ -1745,6 +1747,23 @@ class BrushFlowJlike(_PluginBase):
                                                         }
                                                     }
                                                 ]
+                                            },
+                                            {
+                                                'component': 'VCol',
+                                                'props': {
+                                                    "cols": 12,
+                                                    "md": 4
+                                                },
+                                                'content': [
+                                                    {
+                                                        'component': 'VTextField',
+                                                        'props': {
+                                                            'model': 'mode_support',
+                                                            'label': '馒头站点mode支持',
+                                                            'placeholder': '如tvshow,movie,documentary'
+                                                        }
+                                                    }
+                                                ]
                                             }
                                         ]
                                     }
@@ -2125,6 +2144,17 @@ class BrushFlowJlike(_PluginBase):
                 torrents.extend(torrents_temp)
             else:
                 torrents = torrents_temp
+
+        if brush_config.mode_support:
+            modes = [mode.strip() for mode in brush_config.mode_support.split(",") if mode.strip()]
+            for mode in modes:
+                torrents_temp = TorrentsChain().browse(domain=siteinfo.domain, keyword=f"mode{mode}")
+                if torrents_temp:
+                    # torrents_temp添加到torrents中
+                    if torrents:
+                        torrents.extend(torrents_temp)
+                    else:
+                        torrents = torrents_temp
 
         if not torrents:
             logger.info(f"站点 {siteinfo.name} 没有获取到种子")
@@ -3295,6 +3325,7 @@ class BrushFlowJlike(_PluginBase):
             "site_config": brush_config.site_config,
             "del_no_free": brush_config.del_no_free,
             "rss_support": brush_config.rss_support,
+            "mode_support": brush_config.mode_support,
             "_tabs": self._tabs
         }
 
