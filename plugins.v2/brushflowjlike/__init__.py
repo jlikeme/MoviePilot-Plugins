@@ -63,10 +63,10 @@ class BrushConfig:
         self.download_time = self.__parse_number(config.get("download_time"))
         self.seed_avgspeed = self.__parse_number(config.get("seed_avgspeed"))
         self.seed_inactivetime = self.__parse_number(config.get("seed_inactivetime"))
-        self.seed_inactivetime_ratio_time = self.__parse_number(config.get("seed_inactivetime_ratio_time"))
-        self.seed_inactivetime_ratio_ratio = self.__parse_number(config.get("seed_inactivetime_ratio_ratio"))
+        self.upload_time_size_time = self.__parse_number(config.get("upload_time_size_time"))
+        self.upload_time_size_size = self.__parse_number(config.get("upload_time_size_size"))
         self.download_time_size_time = self.__parse_number(config.get("download_time_size_time"))
-        self.download_time_size_ratio = self.__parse_number(config.get("download_time_size_ratio"))
+        self.download_time_size_size = self.__parse_number(config.get("download_time_size_size"))
         self.delete_size_range = config.get("delete_size_range")
         self.up_speed = self.__parse_number(config.get("up_speed"))
         self.dl_speed = self.__parse_number(config.get("dl_speed"))
@@ -123,10 +123,10 @@ class BrushConfig:
             "download_time",
             "seed_avgspeed",
             "seed_inactivetime",
-            "seed_inactivetime_ratio_time",
-            "seed_inactivetime_ratio_ratio",
+            "upload_time_size_time",
+            "upload_time_size_size",
             "download_time_size_time",
-            "download_time_size_ratio",
+            "download_time_size_size",
             "save_path",
             "proxy_delete",
             "qb_category",
@@ -271,7 +271,7 @@ class BrushFlowJlike(_PluginBase):
     # 插件图标
     plugin_icon = "brush.jpg"
     # 插件版本
-    plugin_version = "4.3.4-7"
+    plugin_version = "4.3.4-8"
     # 插件作者
     plugin_author = "jxxghp,InfinityPacer,Seed680,jlikeme"
     # 作者主页
@@ -298,6 +298,17 @@ class BrushFlowJlike(_PluginBase):
     _scheduler = None
     # tabs
     _tabs = None
+
+    TRAFFIC_WINDOWS = [
+        ("5m", 5 * 60),
+        ("10m", 10 * 60),
+        ("20m", 20 * 60),
+        ("30m", 30 * 60),
+        ("1h", 60 * 60),
+        ("2h", 2 * 60 * 60),
+        ("4h", 4 * 60 * 60)
+    ]
+    HISTORY_RETENTION_SECONDS = 4 * 60 * 60
 
     # endregion
 
@@ -1504,9 +1515,9 @@ class BrushFlowJlike(_PluginBase):
                                                     {
                                                         'component': 'VTextField',
                                                         'props': {
-                                                            'model': 'seed_inactivetime_ratio_time',
-                                                            'label': '时间分享率-未活动时间（分钟）',
-                                                            'placeholder': '超过未活动时间且分享率低于时删除任务'
+                                                            'model': 'upload_time_size_time',
+                                                            'label': '最近时间内上传量-时间（分钟）',
+                                                            'placeholder': '已完成下载时最近时间内上传量低于时删除任务'
                                                         }
                                                     }
                                                 ]
@@ -1521,9 +1532,9 @@ class BrushFlowJlike(_PluginBase):
                                                     {
                                                         'component': 'VTextField',
                                                         'props': {
-                                                            'model': 'seed_inactivetime_ratio_ratio',
-                                                            'label': '时间分享率-分享率',
-                                                            'placeholder': '超过未活动时间且分享率低于时删除任务'
+                                                            'model': 'upload_time_size_size',
+                                                            'label': '最近时间内上传量-上传量（MB）',
+                                                            'placeholder': '已完成下载时最近时间内上传量低于时删除任务'
                                                         }
                                                     }
                                                 ]
@@ -1539,8 +1550,8 @@ class BrushFlowJlike(_PluginBase):
                                                         'component': 'VTextField',
                                                         'props': {
                                                             'model': 'download_time_size_time',
-                                                            'label': '下载时间完成度-下载时间（分钟）',
-                                                            'placeholder': '超过下载时间且完成度低于时删除任务'
+                                                            'label': '最近时间内下载量-时间（分钟）',
+                                                            'placeholder': '未完成下载时最近时间内下载量低于时删除任务'
                                                         }
                                                     }
                                                 ]
@@ -1555,9 +1566,9 @@ class BrushFlowJlike(_PluginBase):
                                                     {
                                                         'component': 'VTextField',
                                                         'props': {
-                                                            'model': 'download_time_size_ratio',
-                                                            'label': '下载时间完成度-完成度',
-                                                            'placeholder': '超过下载时间且完成度低于时删除任务'
+                                                            'model': 'download_time_size_size',
+                                                            'label': '最近时间内下载量-下载量（MB）',
+                                                            'placeholder': '未完成下载时最近时间内下载量低于时删除任务'
                                                         }
                                                     }
                                                 ]
@@ -2492,6 +2503,7 @@ class BrushFlowJlike(_PluginBase):
                         for torrent_hash in need_delete_hashes:
                             torrent_tasks[torrent_hash]["deleted"] = True
                             torrent_tasks[torrent_hash]["deleted_time"] = time.time()
+                            torrent_tasks[torrent_hash].pop("history", None)
 
             # 归档数据
             self.__auto_archive_tasks(torrent_tasks=torrent_tasks)
@@ -2516,12 +2528,92 @@ class BrushFlowJlike(_PluginBase):
             torrent_info = self.__get_torrent_info(torrent)
 
             # 更新上传量、下载量
+            previous_uploaded = torrent_task.get("uploaded", 0)
+            previous_downloaded = torrent_task.get("downloaded", 0)
+            current_uploaded = torrent_info.get("uploaded")
+            current_downloaded = torrent_info.get("downloaded")
             torrent_task.update({
-                "downloaded": torrent_info.get("downloaded"),
-                "uploaded": torrent_info.get("uploaded"),
+                "downloaded": current_downloaded,
+                "uploaded": current_uploaded,
                 "ratio": torrent_info.get("ratio"),
                 "seeding_time": torrent_info.get("seeding_time"),
             })
+            self.__update_torrent_history(
+                torrent_task=torrent_task,
+                current_uploaded=current_uploaded,
+                current_downloaded=current_downloaded,
+                previous_uploaded=previous_uploaded,
+                previous_downloaded=previous_downloaded
+            )
+
+    def __update_torrent_history(self, torrent_task: Dict[str, Any], current_uploaded: int,
+                                 current_downloaded: int, previous_uploaded: int, previous_downloaded: int) -> None:
+        history = torrent_task.setdefault("history", [])
+        now = time.time()
+        delta_uploaded = max(0, current_uploaded - previous_uploaded)
+        delta_downloaded = max(0, current_downloaded - previous_downloaded)
+        if delta_uploaded or delta_downloaded:
+            history.append({
+                "timestamp": now,
+                "uploaded": delta_uploaded,
+                "downloaded": delta_downloaded
+            })
+        cutoff_time = now - (self.HISTORY_RETENTION_SECONDS + self.TRAFFIC_WINDOWS[-1][1])
+        torrent_task["history"] = [entry for entry in history if entry["timestamp"] >= cutoff_time]
+        traffic_stats = torrent_task.setdefault("traffic_stats", {"upload": {}, "download": {}})
+        upload_stats = traffic_stats.setdefault("upload", {})
+        download_stats = traffic_stats.setdefault("download", {})
+        for window_key, window_seconds in self.TRAFFIC_WINDOWS:
+            window_start = now - window_seconds
+            window_uploaded = 0
+            window_downloaded = 0
+            for entry in history:
+                if entry["timestamp"] >= window_start:
+                    window_uploaded += entry["uploaded"]
+                    window_downloaded += entry["downloaded"]
+            upload_stats[window_key] = window_uploaded
+            download_stats[window_key] = window_downloaded
+
+    def __calculate_recent_time_uploaded(self, torrent_task: Dict[str, Any], torrent_info: dict,
+                                   recent_seconds: float) -> Tuple[bool, int]:
+        """
+        获取指定时长窗口内的上传量
+        """
+        if recent_seconds <= 0:
+            return False, 0
+        now_ts = time.time()
+        cutoff = now_ts - recent_seconds
+        history = torrent_task.get("history") or []
+        timestamps = [entry.get("timestamp", 0) for entry in history if entry.get("timestamp")]
+        if not timestamps or (now_ts - min(timestamps)) < recent_seconds:
+            return False, 0
+        recent_uploaded = 0
+        for entry in history:
+            if entry.get("timestamp", 0) >= cutoff:
+                recent_uploaded += entry.get("uploaded", 0)
+        logger.info(f"title={torrent_task.get('title')} recent_seconds={recent_seconds}s recent_uploaded={recent_uploaded / 1024 / 1024:.2f} MB")
+        return True, recent_uploaded
+
+    def __calculate_recent_time_downloaded(self, torrent_task: Dict[str, Any], torrent_info: dict,
+                                           recent_seconds: float) -> Tuple[bool, int]:
+        """
+        获取指定时长窗口内的下载量
+        """
+
+        if recent_seconds <= 0:
+            return False, 0
+        now_ts = time.time()
+        cutoff = now_ts - recent_seconds
+        history = torrent_task.get("history") or []
+        timestamps = [entry.get("timestamp", 0) for entry in history if entry.get("timestamp")]
+        if not timestamps or (now_ts - min(timestamps)) < recent_seconds:
+            return False, 0
+        recent_downloaded = 0
+        for entry in history:
+            if entry.get("timestamp", 0) >= cutoff:
+                recent_downloaded += entry.get("downloaded", 0)
+        logger.info(f"title={torrent_task.get('title')} recent_seconds={recent_seconds}s recent_downloaded={recent_downloaded / 1024 / 1024:.2f} MB")
+        return True, recent_downloaded
 
     def __update_seeding_tasks_based_on_tags(self, torrent_tasks: Dict[str, dict], unmanaged_tasks: Dict[str, dict],
                                              seeding_torrents_dict: Dict[str, Any]):
@@ -2658,30 +2750,57 @@ class BrushFlowJlike(_PluginBase):
             break
 
         # 处理其他场景，1. 不是H&R种子；2. 是H&R种子但没有特定条件配置
-        reason = reason if not hit_and_run else "H&R种子（未设置H&R条件），未能满足设置的删除条件"
+        base_reason = reason if not hit_and_run else "H&R种子（未设置H&R条件），未能满足设置的删除条件"
+        deletion_reason = None
         if brush_config.seed_time and torrent_info.get("seeding_time") >= float(brush_config.seed_time) * 3600:
-            reason = f"做种时间 {torrent_info.get('seeding_time') / 3600:.1f} 小时，大于 {brush_config.seed_time} 小时"
+            deletion_reason = f"做种时间 {torrent_info.get('seeding_time') / 3600:.1f} 小时，大于 {brush_config.seed_time} 小时"
         elif brush_config.seed_ratio and torrent_info.get("ratio") >= float(brush_config.seed_ratio):
-            reason = f"分享率 {torrent_info.get('ratio'):.2f}，大于 {brush_config.seed_ratio}"
+            deletion_reason = f"分享率 {torrent_info.get('ratio'):.2f}，大于 {brush_config.seed_ratio}"
         elif brush_config.seed_size and torrent_info.get("uploaded") >= float(brush_config.seed_size) * 1024 ** 3:
-            reason = f"上传量 {torrent_info.get('uploaded') / 1024 ** 3:.1f} GB，大于 {brush_config.seed_size} GB"
+            deletion_reason = f"上传量 {torrent_info.get('uploaded') / 1024 ** 3:.1f} GB，大于 {brush_config.seed_size} GB"
         elif brush_config.download_time and torrent_info.get("downloaded") < torrent_info.get(
                 "total_size") and torrent_info.get("dltime") >= float(brush_config.download_time) * 3600:
-            reason = f"下载耗时 {torrent_info.get('dltime') / 3600:.1f} 小时，大于 {brush_config.download_time} 小时"
+            deletion_reason = f"下载耗时 {torrent_info.get('dltime') / 3600:.1f} 小时，大于 {brush_config.download_time} 小时"
         elif brush_config.seed_avgspeed and torrent_info.get("avg_upspeed") <= float(
                 brush_config.seed_avgspeed) * 1024 and torrent_info.get("seeding_time") >= 30 * 60:
-            reason = f"平均上传速度 {torrent_info.get('avg_upspeed') / 1024:.1f} KB/s，低于 {brush_config.seed_avgspeed} KB/s"
+            deletion_reason = f"平均上传速度 {torrent_info.get('avg_upspeed') / 1024:.1f} KB/s，低于 {brush_config.seed_avgspeed} KB/s"
         elif brush_config.seed_inactivetime and torrent_info.get("iatime") >= float(
                 brush_config.seed_inactivetime) * 60:
-            reason = f"未活动时间 {torrent_info.get('iatime') / 60:.0f} 分钟，大于 {brush_config.seed_inactivetime} 分钟"
-        elif brush_config.seed_inactivetime_ratio_time and brush_config.seed_inactivetime_ratio_ratio and torrent_info.get("iatime") >= float(
-                brush_config.seed_inactivetime_ratio_time) * 60 and torrent_info.get("ratio") < float(brush_config.seed_inactivetime_ratio_ratio):
-            reason = f"未活动时间 {torrent_info.get('iatime') / 60:.0f} 分钟，大于 {brush_config.seed_inactivetime_ratio_time} 分钟，分享率 {torrent_info.get('ratio'):.2f}，低于 {brush_config.seed_inactivetime_ratio_ratio}"
-        elif (brush_config.download_time_size_time and brush_config.download_time_size_ratio and torrent_info.get("dltime") >= float(brush_config.download_time_size_time) * 60 and
-              torrent_info.get("downloaded") / torrent_info.get("total_size") < float(brush_config.download_time_size_ratio)):
-            reason = f"下载耗时 {torrent_info.get('dltime') / 60:.1f} 分钟，大于 {brush_config.download_time_size_time} 分钟，下载完成度 {torrent_info.get('downloaded') / torrent_info.get('total_size'):.2}，低于 {brush_config.download_time_size_ratio:.2}"
-        else:
-            return False, reason
+            deletion_reason = f"未活动时间 {torrent_info.get('iatime') / 60:.0f} 分钟，大于 {brush_config.seed_inactivetime} 分钟"
+
+        if (not deletion_reason and brush_config.upload_time_size_time and brush_config.upload_time_size_size
+                and torrent_info.get("downloaded") >= torrent_info.get("total_size", 0)):
+            # 当下载已完成时，计算指定时间窗口内的上传量，低于设定值则删除
+            uploaded_success, recent_uploaded = self.__calculate_recent_time_uploaded(
+                torrent_task=torrent_task, torrent_info=torrent_info, recent_seconds=float(brush_config.upload_time_size_time or 0) * 60)
+            if uploaded_success and recent_uploaded < float(brush_config.upload_time_size_size) * 1024 * 1024:
+                uploaded10_success, recent10_uploaded = self.__calculate_recent_time_uploaded(
+                    torrent_task=torrent_task, torrent_info=torrent_info,
+                    recent_seconds=600)  # 10分钟内上传量
+                if not (uploaded10_success and recent10_uploaded > 5 * 1024 * 1024):
+                    # 10分钟内上传量不大于5MB，认为是真正的上传停滞
+                    deletion_reason = (f"最近 {brush_config.upload_time_size_time} 分钟内，上传量 {recent_uploaded/(1024*1024):.2f} MB，低于 {brush_config.upload_time_size_size} MB")
+
+        if (not deletion_reason and brush_config.download_time_size_time
+                and brush_config.download_time_size_size
+                and torrent_info.get("downloaded") < torrent_info.get("total_size", 0)):
+            # 当下载未完成时，计算指定时间窗口内的下载量，低于设定值则删除
+            downloaded_success, recent_downloaded = self.__calculate_recent_time_downloaded(
+                torrent_task=torrent_task, torrent_info=torrent_info, recent_seconds=float(brush_config.download_time_size_time or 0) * 60)
+            if downloaded_success and recent_downloaded < float(brush_config.download_time_size_size) * 1024 * 1024:
+                downloaded10_success, recent10_downloaded = self.__calculate_recent_time_downloaded(
+                    torrent_task=torrent_task, torrent_info=torrent_info,
+                    recent_seconds=600)  # 10分钟内下载量
+                if not (downloaded10_success and recent10_downloaded > 10 * 1024 * 1024):
+                    # 10分钟内下载量不大于10MB，认为是真正的下载停滞
+                    deletion_reason = (f"最近 {brush_config.download_time_size_time} 分钟内，"
+                                       f"下载量 {recent_downloaded / (1024 * 1024):.2f} MB，"
+                                       f"低于 {brush_config.download_time_size_size} MB")
+
+        if not deletion_reason:
+            return False, base_reason
+
+        reason = deletion_reason
 
         return True, reason if not hit_and_run else "H&R种子（未设置H&R条件），" + reason
 
@@ -2954,6 +3073,7 @@ class BrushFlowJlike(_PluginBase):
             # 标记为已删除
             torrent_task["deleted"] = True
             torrent_task["deleted_time"] = time.time()
+            torrent_task.pop("history", None)
             # 处理日志相关内容
             delete_tasks.append(torrent_task)
             site_name = torrent_task.get("site_name", "")
@@ -3078,10 +3198,10 @@ class BrushFlowJlike(_PluginBase):
             "download_time": "下载超时时间",
             "seed_avgspeed": "平均上传速度",
             "seed_inactivetime": "未活动时间",
-            "seed_inactivetime_ratio_time": "分享率未活动-时间",
-            "seed_inactivetime_ratio_ratio": "分享率未活动-分享率",
-            "download_time_size_time": "下载时间完成度-时间",
-            "download_time_size_ratio": "下载时间完成度-完成度",
+            "upload_time_size_time": "最近时间内上传量-时间",
+            "upload_time_size_size": "最近时间内上传量-上传量",
+            "download_time_size_time": "最近时间内下载量-时间",
+            "download_time_size_size": "最近时间内下载量-下载量",
             "up_speed": "单任务上传限速",
             "dl_speed": "单任务下载限速",
             "auto_archive_days": "自动清理记录天数"
@@ -3154,10 +3274,10 @@ class BrushFlowJlike(_PluginBase):
             "download_time": brush_config.download_time,
             "seed_avgspeed": brush_config.seed_avgspeed,
             "seed_inactivetime": brush_config.seed_inactivetime,
-            "seed_inactivetime_ratio_time": brush_config.seed_inactivetime_ratio_time,
-            "seed_inactivetime_ratio_ratio": brush_config.seed_inactivetime_ratio_ratio,
+            "upload_time_size_time": brush_config.upload_time_size_time,
+            "upload_time_size_size": brush_config.upload_time_size_size,
             "download_time_size_time": brush_config.download_time_size_time,
-            "download_time_size_ratio": brush_config.download_time_size_ratio,
+            "download_time_size_size": brush_config.download_time_size_size,
             "delete_size_range": brush_config.delete_size_range,
             "up_speed": brush_config.up_speed,
             "dl_speed": brush_config.dl_speed,
